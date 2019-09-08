@@ -5,6 +5,10 @@
  *
  */
 #include <opencv2/opencv.hpp>   // for commandline parser
+#include <opencv4/opencv2/core.hpp>
+#include <opencv4/opencv2/videoio.hpp>
+#include <opencv4/opencv2/imgproc.hpp>
+#include <opencv4/opencv2/highgui.hpp>
 #include "jetnet.h"
 #include "create_runner.h"
 
@@ -80,19 +84,13 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    std::vector<cv::Mat> images;
+    std::vector<cv::Mat> images(1);
+    cv::VideoCapture cap(1);
+    cv::Mat frame;
 
-    cv::Mat img = read_image(input_image_file);
-    if (img.empty()) {
-        std::cerr << "Failed to read image: " << input_image_file << std::endl;
-        return -1;
-    }
-
-    // process the same image multiple times if batch size > 1
-    for (int i=0; i<batch_size; ++i) {
-        images.push_back(img);
-    }
-
+while(1){
+    cap>>frame;
+images[0]=frame;
     if (!runner->init(input_model_file)) {
         std::cerr << "Failed to init runner" << std::endl;
         return -1;
@@ -102,13 +100,12 @@ int main(int argc, char** argv)
     pre->register_images(images);
 
     // run pre/infer/post pipeline for a number of times depending on the profiling setting
-    size_t iterations = enable_profiling ? 10 : 1;
-    for (size_t i=0; i<iterations; ++i) {
+    
         if (!(*runner)()) {
             std::cerr << "Failed to run network" << std::endl;
             return -1;
         }
-    }
+    
 
     // get detections and visualise
     auto detections = post->get_detections();
@@ -119,8 +116,8 @@ int main(int argc, char** argv)
     draw_detections(detections[0], class_names, out);
 
     cv::imshow("result", out);
-    cv::waitKey(0);
-
+    cv::waitKey(1);
+}
     // show profiling if enabled
     runner->print_profiling();
 
